@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Halka Sayaç
+Comment=Halkalı geri sayım sayacı
+Exec=halka-sayac
+Icon=halka-sayac
+Terminal=false
+Categories=Utility;Clock;
+StartupWMClass=HalkaSayac

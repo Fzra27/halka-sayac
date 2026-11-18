@@ -1,0 +1,170 @@
+#!/usr/bin/python3
+import math
+import time
+import tkinter as tk
+
+BG = "#101824"
+CARD = "#192637"
+TEXT = "#eff6ff"
+MUTED = "#a8bacd"
+PALETTE = {
+    "Turuncu": "#ffad63",
+    "Kırmızı": "#ff747d",
+    "Yeşil": "#68deb0",
+    "Mavi": "#72bdff",
+}
+
+
+class Timer:
+    def __init__(self, window):
+        self.window = window
+        self.total = self.remaining = 60
+        self.deadline = None
+        self.pending = None
+        self.paused = False
+        self.color = tk.StringVar(value="Turuncu")
+        self.status = tk.StringVar(value="Hazır")
+        window.title("Halka Sayaç")
+        window.configure(bg=BG)
+        window.resizable(False, False)
+
+        tk.Label(window, text="Halka Sayaç", font=("Sans", 20, "bold"),
+                 bg=BG, fg=TEXT).pack(pady=(20, 4))
+        self.dial = tk.Canvas(window, width=248, height=248, bg=BG,
+                              highlightthickness=0)
+        self.dial.pack(padx=48, pady=8)
+        self.dial.create_oval(16, 16, 232, 232, outline=CARD, width=11)
+        self.full = self.dial.create_oval(16, 16, 232, 232, width=11)
+        self.arc = self.dial.create_arc(16, 16, 232, 232, start=90,
+                                        style=tk.ARC, width=11)
+        self.clock = self.dial.create_text(124, 124, fill=TEXT,
+                                           font=("Monospace", 34, "bold"))
+        tk.Label(window, textvariable=self.status, bg=BG, fg=MUTED).pack()
+
+        inputs = tk.Frame(window, bg=BG)
+        inputs.pack(pady=14)
+        self.minutes = tk.StringVar(value="1")
+        self.seconds = tk.StringVar(value="0")
+        self.fields = []
+        for column, (label, variable, limit) in enumerate([
+            ("Dakika", self.minutes, 999), ("Saniye", self.seconds, 59)
+        ]):
+            tk.Label(inputs, text=label, bg=BG, fg=MUTED).grid(row=0, column=column)
+            field = tk.Spinbox(inputs, from_=0, to=limit, textvariable=variable,
+                               width=6, justify="center", bg=CARD, fg=TEXT,
+                               insertbackground=TEXT, disabledbackground=CARD,
+                               disabledforeground=MUTED, buttonbackground=CARD,
+                               relief="flat", font=("Sans", 13))
+            field.grid(row=1, column=column, padx=8, pady=4, ipady=4)
+            self.fields.append(field)
+            variable.trace_add("write", self.edit_duration)
+
+        actions = tk.Frame(window, bg=BG)
+        actions.pack()
+        self.toggle_button = tk.Button(actions, text="Başlat", width=12,
+                                       command=self.toggle, relief="flat",
+                                       fg=BG, activeforeground=BG, pady=6)
+        self.toggle_button.pack(side="left", padx=5)
+        tk.Button(actions, text="Sıfırla", width=10, command=self.reset, relief="flat",
+                  bg=CARD, fg=TEXT, activebackground="#2b4057", activeforeground=TEXT,
+                  pady=6).pack(side="left", padx=5)
+
+        colors = tk.Frame(window, bg=BG)
+        colors.pack(pady=(18, 24), padx=18)
+        for name, color in PALETTE.items():
+            tk.Radiobutton(colors, text=name, value=name, variable=self.color,
+                           command=self.render, indicatoron=False, relief="flat",
+                           bg=CARD, fg=color, selectcolor="#33485f",
+                           activebackground="#33485f", activeforeground=color,
+                           padx=7, pady=5).pack(side="left", padx=3)
+        self.render()
+
+    def duration(self):
+        try:
+            minutes, seconds = int(self.minutes.get()), int(self.seconds.get())
+        except ValueError:
+            return 0
+        if not (0 <= minutes <= 999 and 0 <= seconds <= 59):
+            return 0
+        return minutes * 60 + seconds
+
+    def edit_duration(self, *_):
+        self.total = self.remaining = self.duration()
+        self.status.set("Hazır")
+        self.render()
+
+    def render(self):
+        seconds = math.ceil(self.remaining)
+        minutes, seconds = divmod(seconds, 60)
+        self.dial.itemconfigure(self.clock, text=f"{minutes:02d}:{seconds:02d}")
+        accent = PALETTE[self.color.get()]
+        progress = self.remaining / self.total if self.total else 0
+        self.dial.itemconfigure(self.full, outline=accent,
+                                state="normal" if progress == 1 else "hidden")
+        self.dial.itemconfigure(self.arc, outline=accent, extent=-360 * progress,
+                                state="normal" if 0 < progress < 1 else "hidden")
+        self.toggle_button.configure(bg=accent, activebackground=accent)
+
+    def update_controls(self):
+        running = self.deadline is not None
+        for field in self.fields:
+            field.configure(state="disabled" if running or self.paused else "normal")
+        label = "Devam et" if self.paused else "Başlat"
+        self.toggle_button.configure(text="Duraklat" if running else label)
+
+    def toggle(self):
+        if self.deadline is not None:
+            self.window.after_cancel(self.pending)
+            self.pending = None
+            self.remaining = max(0, self.deadline - time.monotonic())
+            if self.remaining == 0:
+                self.finish()
+                return
+            self.deadline = None
+            self.paused = True
+            self.status.set("Duraklatıldı")
+            self.update_controls()
+            self.render()
+            return
+
+        if not self.paused:
+            self.total = self.remaining = self.duration()
+        if not self.remaining:
+            self.status.set("Geçerli ve sıfırdan büyük bir süre gir.")
+            return
+        self.deadline = time.monotonic() + self.remaining
+        self.paused = False
+        self.status.set("Geri sayıyor")
+        self.update_controls()
+        self.tick()
+
+    def tick(self):
+        self.pending = None
+        self.remaining = max(0, self.deadline - time.monotonic())
+        if self.remaining == 0:
+            self.finish()
+            return
+        self.render()
+        self.pending = self.window.after(40, self.tick)
+
+    def finish(self):
+        self.deadline = None
+        self.status.set("Süre doldu!")
+        self.update_controls()
+        self.render()
+        self.window.bell()
+
+    def reset(self):
+        if self.pending is not None:
+            self.window.after_cancel(self.pending)
+            self.pending = None
+        self.deadline = None
+        self.paused = False
+        self.update_controls()
+        self.edit_duration()
+
+
+if __name__ == "__main__":
+    root = tk.Tk(className="HalkaSayac")
+    Timer(root)
+    root.mainloop()

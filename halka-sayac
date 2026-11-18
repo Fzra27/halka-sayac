@@ -1,12 +1,18 @@
 #!/usr/bin/python3
 import math
+from pathlib import Path
+import shutil
+import subprocess
 import time
 import tkinter as tk
 
-BG = "#101824"
-CARD = "#192637"
-TEXT = "#eff6ff"
-MUTED = "#a8bacd"
+BG = "#000000"
+CARD = "#161616"
+HOVER = "#303030"
+TEXT = "#f5f5f5"
+MUTED = "#ababab"
+UI_FONT = "DejaVu Sans"
+CLOCK_FONT = "DejaVu Sans Mono"
 PALETTE = {
     "Turuncu": "#ffad63",
     "Kırmızı": "#ff747d",
@@ -26,8 +32,11 @@ class Timer:
         self.status = tk.StringVar(value="Hazır")
         window.title("Halka Sayaç")
         window.configure(bg=BG)
+        window.option_add("*Font", (UI_FONT, 10))
+        window.option_add("*highlightBackground", BG)
+        window.option_add("*highlightColor", MUTED)
 
-        tk.Label(window, text="Halka Sayaç", font=("Sans", 20, "bold"),
+        tk.Label(window, text="Halka Sayaç", font=(UI_FONT, 20, "bold"),
                  bg=BG, fg=TEXT).pack(pady=(20, 4))
         self.dial = tk.Canvas(window, width=248, height=248, bg=BG,
                               highlightthickness=0)
@@ -37,8 +46,10 @@ class Timer:
         self.arc = self.dial.create_arc(16, 16, 232, 232, start=90,
                                         style=tk.ARC, width=11)
         self.clock = self.dial.create_text(124, 124, fill=TEXT,
-                                           font=("Monospace", 34, "bold"))
-        tk.Label(window, textvariable=self.status, bg=BG, fg=MUTED).pack()
+                                           font=(CLOCK_FONT, 34))
+        self.status_label = tk.Label(window, textvariable=self.status, bg=BG,
+                                     fg=MUTED, font=(UI_FONT, 11, "bold"))
+        self.status_label.pack()
 
         inputs = tk.Frame(window, bg=BG)
         inputs.pack(pady=14)
@@ -53,7 +64,7 @@ class Timer:
                                width=6, justify="center", bg=CARD, fg=TEXT,
                                insertbackground=TEXT, disabledbackground=CARD,
                                disabledforeground=MUTED, buttonbackground=CARD,
-                               relief="flat", font=("Sans", 13))
+                               relief="flat", font=(CLOCK_FONT, 13))
             field.grid(row=1, column=column, padx=8, pady=4, ipady=4)
             self.fields.append(field)
             variable.trace_add("write", self.edit_duration)
@@ -65,12 +76,12 @@ class Timer:
                                        fg=BG, activeforeground=BG, pady=6)
         self.toggle_button.pack(side="left", padx=5)
         tk.Button(actions, text="Sıfırla", width=10, command=self.reset, relief="flat",
-                  bg=CARD, fg=TEXT, activebackground="#2b4057", activeforeground=TEXT,
+                  bg=CARD, fg=TEXT, activebackground=HOVER, activeforeground=TEXT,
                   pady=6).pack(side="left", padx=5)
 
         self.fullscreen_button = tk.Button(
             actions, text="Tam ekran", command=self.toggle_fullscreen,
-            relief="flat", bg=CARD, fg=TEXT, activebackground="#2b4057",
+            relief="flat", bg=CARD, fg=TEXT, activebackground=HOVER,
             activeforeground=TEXT, pady=6,
         )
         self.fullscreen_button.pack(side="left", padx=5)
@@ -80,8 +91,8 @@ class Timer:
         for name, color in PALETTE.items():
             tk.Radiobutton(colors, text=name, value=name, variable=self.color,
                            command=self.render, indicatoron=False, relief="flat",
-                           bg=CARD, fg=color, selectcolor="#33485f",
-                           activebackground="#33485f", activeforeground=color,
+                           bg=CARD, fg=color, selectcolor=HOVER,
+                           activebackground=HOVER, activeforeground=color,
                            padx=7, pady=5).pack(side="left", padx=3)
         self.dial.bind("<Configure>", self.resize_dial)
         window.bind("<F11>", self.toggle_fullscreen)
@@ -111,7 +122,7 @@ class Timer:
             self.dial.itemconfigure(item, width=max(2, size * 0.044))
         self.dial.coords(self.clock, center_x, center_y)
         self.dial.itemconfigure(
-            self.clock, font=("Monospace", -max(12, round(size * 0.18)), "bold")
+            self.clock, font=(CLOCK_FONT, -max(12, round(size * 0.18)))
         )
 
     def duration(self):
@@ -133,6 +144,7 @@ class Timer:
         minutes, seconds = divmod(seconds, 60)
         self.dial.itemconfigure(self.clock, text=f"{minutes:02d}:{seconds:02d}")
         accent = PALETTE[self.color.get()]
+        self.status_label.configure(fg=accent if self.status.get() == "Süre doldu!" else MUTED)
         progress = self.remaining / self.total if self.total else 0
         self.dial.itemconfigure(self.full, outline=accent,
                                 state="normal" if progress == 1 else "hidden")
@@ -187,6 +199,30 @@ class Timer:
         self.status.set("Süre doldu!")
         self.update_controls()
         self.render()
+        self.notify_finished()
+
+    def notify_finished(self):
+        if shutil.which("notify-send"):
+            try:
+                subprocess.Popen([
+                    "notify-send", "--app-name=Halka Sayaç",
+                    "--icon=halka-sayac", "--urgency=critical",
+                    "Süre doldu!", "Geri sayım tamamlandı.",
+                ])
+            except OSError:
+                pass
+
+        prefix = Path(__file__).resolve().parent.parent
+        alarm = prefix / "share/halka-sayac/alarm.wav"
+        if not alarm.is_file():
+            alarm = Path(__file__).resolve().parent / "packaging/alarm.wav"
+        for player in ("paplay", "pw-play"):
+            if alarm.is_file() and shutil.which(player):
+                try:
+                    subprocess.Popen([player, str(alarm)])
+                    return
+                except OSError:
+                    continue
         self.window.bell()
 
     def reset(self):

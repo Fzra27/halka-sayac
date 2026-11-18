@@ -7,10 +7,11 @@ Türkçe masaüstü geri sayım sayacı. Turuncu, kırmızı, yeşil ve mavi ren
 [.deb paketini indir](https://github.com/Fzra27/halka-sayac/releases/latest) ve paket yükleyiciyle aç. Terminalden kurmak için dosyayı indirdiğin dizinde şu komutu çalıştır:
 
 ```bash
-sudo apt install ./halka-sayac_1.0.0_all.deb
+sudo apt install ./halka-sayac_1.1.0_all.deb
 ```
 
 Kurulumdan sonra uygulama menüsünden **Halka Sayaç**’ı aç.
+ Tam ekrana geçmek için **Tam ekran** düğmesini veya **F11** tuşunu kullan. Çıkmak için **Esc** tuşuna bas.
 
 ## Omarchy
 

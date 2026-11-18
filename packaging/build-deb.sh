@@ -3,7 +3,7 @@ set -eu
 umask 022
 
 cd "$(dirname "$0")/.."
-version=1.0.0
+version=1.1.0
 output=${1:-"halka-sayac_${version}_all.deb"}
 stage=$(mktemp -d)
 chmod 755 "$stage"

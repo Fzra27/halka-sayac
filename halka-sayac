@@ -26,14 +26,13 @@ class Timer:
         self.status = tk.StringVar(value="Hazır")
         window.title("Halka Sayaç")
         window.configure(bg=BG)
-        window.resizable(False, False)
 
         tk.Label(window, text="Halka Sayaç", font=("Sans", 20, "bold"),
                  bg=BG, fg=TEXT).pack(pady=(20, 4))
         self.dial = tk.Canvas(window, width=248, height=248, bg=BG,
                               highlightthickness=0)
-        self.dial.pack(padx=48, pady=8)
-        self.dial.create_oval(16, 16, 232, 232, outline=CARD, width=11)
+        self.dial.pack(fill="both", expand=True, padx=20, pady=8)
+        self.track = self.dial.create_oval(16, 16, 232, 232, outline=CARD, width=11)
         self.full = self.dial.create_oval(16, 16, 232, 232, width=11)
         self.arc = self.dial.create_arc(16, 16, 232, 232, start=90,
                                         style=tk.ARC, width=11)
@@ -69,6 +68,13 @@ class Timer:
                   bg=CARD, fg=TEXT, activebackground="#2b4057", activeforeground=TEXT,
                   pady=6).pack(side="left", padx=5)
 
+        self.fullscreen_button = tk.Button(
+            actions, text="Tam ekran", command=self.toggle_fullscreen,
+            relief="flat", bg=CARD, fg=TEXT, activebackground="#2b4057",
+            activeforeground=TEXT, pady=6,
+        )
+        self.fullscreen_button.pack(side="left", padx=5)
+
         colors = tk.Frame(window, bg=BG)
         colors.pack(pady=(18, 24), padx=18)
         for name, color in PALETTE.items():
@@ -77,7 +83,36 @@ class Timer:
                            bg=CARD, fg=color, selectcolor="#33485f",
                            activebackground="#33485f", activeforeground=color,
                            padx=7, pady=5).pack(side="left", padx=3)
+        self.dial.bind("<Configure>", self.resize_dial)
+        window.bind("<F11>", self.toggle_fullscreen)
+        window.bind("<Escape>", self.exit_fullscreen)
+        window.update_idletasks()
+        window.minsize(window.winfo_reqwidth(), window.winfo_reqheight() - 80)
         self.render()
+
+    def toggle_fullscreen(self, _event=None):
+        self.set_fullscreen(not self.window.attributes("-fullscreen"))
+
+    def exit_fullscreen(self, _event=None):
+        self.set_fullscreen(False)
+
+    def set_fullscreen(self, enabled):
+        self.window.attributes("-fullscreen", enabled)
+        self.fullscreen_button.configure(text="Tam ekrandan çık" if enabled else "Tam ekran")
+
+    def resize_dial(self, event):
+        size = min(event.width, event.height)
+        center_x, center_y = event.width / 2, event.height / 2
+        radius = size * 0.435
+        bounds = (center_x - radius, center_y - radius,
+                  center_x + radius, center_y + radius)
+        for item in (self.track, self.full, self.arc):
+            self.dial.coords(item, *bounds)
+            self.dial.itemconfigure(item, width=max(2, size * 0.044))
+        self.dial.coords(self.clock, center_x, center_y)
+        self.dial.itemconfigure(
+            self.clock, font=("Monospace", -max(12, round(size * 0.18)), "bold")
+        )
 
     def duration(self):
         try:

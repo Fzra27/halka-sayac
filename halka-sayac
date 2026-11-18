@@ -28,6 +28,7 @@ class Timer:
         self.deadline = None
         self.pending = None
         self.paused = False
+        self.space_pending = None
         self.color = tk.StringVar(value="Turuncu")
         self.status = tk.StringVar(value="Hazır")
         window.title("Halka Sayaç")
@@ -97,9 +98,33 @@ class Timer:
         self.dial.bind("<Configure>", self.resize_dial)
         window.bind("<F11>", self.toggle_fullscreen)
         window.bind("<Escape>", self.exit_fullscreen)
+        shortcut_tag = "HalkaSayacShortcuts"
+        window.bind_class(shortcut_tag, "<KeyPress-space>", self.space_pressed)
+        window.bind_class(shortcut_tag, "<KeyRelease-space>", self.space_released)
+        widgets = [window]
+        while widgets:
+            widget = widgets.pop()
+            widget.bindtags((shortcut_tag, *widget.bindtags()))
+            widgets.extend(widget.winfo_children())
         window.update_idletasks()
         window.minsize(window.winfo_reqwidth(), window.winfo_reqheight() - 80)
         self.render()
+
+    def space_pressed(self, _event):
+        # X11 autorepeat can send a release immediately before each repeated press.
+        if self.space_pending is not None:
+            self.window.after_cancel(self.space_pending)
+            self.space_pending = None
+        return "break"
+
+    def space_released(self, _event):
+        if self.space_pending is None:
+            self.space_pending = self.window.after_idle(self.toggle_from_space)
+        return "break"
+
+    def toggle_from_space(self):
+        self.space_pending = None
+        self.toggle()
 
     def toggle_fullscreen(self, _event=None):
         self.set_fullscreen(not self.window.attributes("-fullscreen"))

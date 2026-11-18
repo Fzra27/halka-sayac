@@ -5,7 +5,7 @@ on:
       tag:
         description: GitHub sürüm etiketi
         required: true
-        default: v1.2.1
+        default: v1.3.0
 
 permissions:
   contents: write

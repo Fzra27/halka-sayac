@@ -11,8 +11,9 @@ CARD = "#161616"
 HOVER = "#303030"
 TEXT = "#f5f5f5"
 MUTED = "#ababab"
-UI_FONT = "DejaVu Sans"
-CLOCK_FONT = "DejaVu Sans Mono"
+UI_FONT = "Lato"
+CLOCK_FONT = "Lato Light"
+MAX_MINUTES = 999
 PALETTE = {
     "Turuncu": "#ffad63",
     "Kırmızı": "#ff747d",
@@ -58,14 +59,14 @@ class Timer:
         self.seconds = tk.StringVar(value="0")
         self.fields = []
         for column, (label, variable, limit) in enumerate([
-            ("Dakika", self.minutes, 999), ("Saniye", self.seconds, 59)
+            ("Dakika", self.minutes, MAX_MINUTES), ("Saniye", self.seconds, 59)
         ]):
             tk.Label(inputs, text=label, bg=BG, fg=MUTED).grid(row=0, column=column)
             field = tk.Spinbox(inputs, from_=0, to=limit, textvariable=variable,
                                width=6, justify="center", bg=CARD, fg=TEXT,
                                insertbackground=TEXT, disabledbackground=CARD,
                                disabledforeground=MUTED, buttonbackground=CARD,
-                               relief="flat", font=(CLOCK_FONT, 13))
+                               relief="flat", font=(UI_FONT, 13))
             field.grid(row=1, column=column, padx=8, pady=4, ipady=4)
             self.fields.append(field)
             variable.trace_add("write", self.edit_duration)
@@ -101,6 +102,8 @@ class Timer:
         shortcut_tag = "HalkaSayacShortcuts"
         window.bind_class(shortcut_tag, "<KeyPress-space>", self.space_pressed)
         window.bind_class(shortcut_tag, "<KeyRelease-space>", self.space_released)
+        window.bind_class(shortcut_tag, "<Up>", lambda event: self.adjust_minutes(1))
+        window.bind_class(shortcut_tag, "<Down>", lambda event: self.adjust_minutes(-1))
         widgets = [window]
         while widgets:
             widget = widgets.pop()
@@ -109,6 +112,17 @@ class Timer:
         window.update_idletasks()
         window.minsize(window.winfo_reqwidth(), window.winfo_reqheight() - 80)
         self.render()
+
+    def adjust_minutes(self, step):
+        if self.deadline is None and not self.paused:
+            try:
+                minutes = int(self.minutes.get())
+            except ValueError:
+                minutes = 0
+            minutes = max(0, min(MAX_MINUTES, minutes + step))
+            if self.minutes.get() != str(minutes):
+                self.minutes.set(str(minutes))
+        return "break"
 
     def space_pressed(self, _event):
         # X11 autorepeat can send a release immediately before each repeated press.
@@ -155,7 +169,7 @@ class Timer:
             minutes, seconds = int(self.minutes.get()), int(self.seconds.get())
         except ValueError:
             return 0
-        if not (0 <= minutes <= 999 and 0 <= seconds <= 59):
+        if not (0 <= minutes <= MAX_MINUTES and 0 <= seconds <= 59):
             return 0
         return minutes * 60 + seconds
 

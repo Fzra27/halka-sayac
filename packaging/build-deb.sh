@@ -3,7 +3,7 @@ set -eu
 umask 022
 
 cd "$(dirname "$0")/.."
-version=1.2.1
+version=1.3.0
 output=${1:-"halka-sayac_${version}_all.deb"}
 stage=$(mktemp -d)
 chmod 755 "$stage"
@@ -20,7 +20,7 @@ Version: $version
 Section: utils
 Priority: optional
 Architecture: all
-Depends: python3, python3-tk, fonts-dejavu-core, libnotify-bin, pulseaudio-utils
+Depends: python3, python3-tk, fonts-lato, libnotify-bin, pulseaudio-utils
 Maintainer: Halka Sayaç <Fzra27@users.noreply.github.com>
 Description: Halkalı masaüstü geri sayım sayacı
  Türkçe arayüzlü ve dört renk seçenekli geri sayım sayacı.
